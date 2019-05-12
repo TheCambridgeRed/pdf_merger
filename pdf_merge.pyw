@@ -1,158 +1,163 @@
-import os
 import PyPDF2
 from tkinter import filedialog
-from tkinter import *
+import tkinter as tk
+
+
+class ListOfEntries():
+    def __init__(self, parent, entries_list=[]):
+        self.parent = parent
+        self.entries_list = entries_list
+        self.add_entry()
+
+    def add_entry(self, text=''):
+        if len(self.entries_list) > 0:
+            self.entries_list[len(self.entries_list) - 1].insert(0, text)
+
+        new_entry = tk.Entry(self.parent, width=40)
+        self.entries_list.append(new_entry)
+        self.pack_in()
+
+    def pack_in(self):
+        for entry in self.entries_list:
+            entry.pack(side=tk.TOP, anchor='s')
+
+
+class LabelledBrowseBox():
+    def __init__(self, parent, label_text, title, button_label,
+                 name='', open=True):
+        self.parent = parent
+        self.name = tk.StringVar()
+        self.name.set(name)
+        self.label_text = label_text
+        self.title = title
+        self.label = tk.Label(self.parent, text=self.label_text, width=40)
+        self.entry = tk.Entry(self.parent, textvariable=self.name)
+        if open:
+            self.button = tk.Button(self.parent, text=button_label,
+                                    command=self.open_pdf)
+        else:
+            self.button = tk.Button(self.parent, text=button_label,
+                                    command=self.save_pdf)
+
+    def pack_in(self):
+        self.label.pack(side=tk.TOP)
+        self.entry.pack(side=tk.LEFT, fill=tk.X, expand=1, padx=5)
+        self.button.pack(side=tk.LEFT, pady=5)
+
+    def open_pdf(self):
+        filename = filedialog.askopenfilename(
+            filetypes=[("PDF files", "*.pdf"),
+                       ("All files", "*.*")],
+            title=self.title)
+        self.name.set(filename)
+
+    def save_pdf(self):
+        filename = filedialog.asksaveasfilename(
+            filetypes=[("PDF files", "*.pdf"),
+                       ("All files", "*.*")],
+            defaultextension=".pdf",
+            title=self.title)
+        self.name.set(filename)
 
 
 def pop_up(msg):
-    popup = Toplevel()
+    popup = tk.Toplevel()
     popup.title("PDF Merger")
     popup.resizable(False, False)
 
-    label = Label(popup, text=msg, width=40)
+    label = tk.Label(popup, text=msg, width=40)
     label.pack()
 
-    button = Button(popup, text="OK", command=popup.destroy,
-                    pady=5)
+    button = tk.Button(popup, text="OK", command=popup.destroy,
+                       pady=5)
     button.pack()
 
     popup.mainloop()
 
 
-def pdf_merge(fileEntry1, fileEntry2, outputEntry):
-    try:
-        filename1 = fileEntry1.get()
-        filename2 = fileEntry2.get()
-        outputFilename = outputEntry.get()
-
-        pdfFile1 = open(filename1, 'rb')
-        pdfFile2 = open(filename2, 'rb')
-    except FileNotFoundError:
-        pop_up("Invalid files to merge!")
-        return
-
-    pdfReader1 = PyPDF2.PdfFileReader(pdfFile1)
-    pdfReader2 = PyPDF2.PdfFileReader(pdfFile2)
-
-    pdfWriter = PyPDF2.PdfFileWriter()
-
-    for page in range(pdfReader1.numPages):
-        pageObj = pdfReader1.getPage(page)
-        pdfWriter.addPage(pageObj)
-
-    for page in range(pdfReader2.numPages):
-        pageObj = pdfReader2.getPage(page)
-        pdfWriter.addPage(pageObj)
+def pdf_merge(content_list, output_entry):
+    filenames_list = []
+    pdf_writer = PyPDF2.PdfFileWriter()
 
     try:
-        pdfOutput = open(outputFilename, 'wb')
+        output_filename = output_entry.get()
+        pdf_output = open(output_filename, 'wb')
     except FileNotFoundError:
-        pop_up("Invalid save location!")
+        pop_up('Invalid save location!')
+
+    try:
+        for content in content_list:
+            if content.get() != '':
+                filenames_list.append(content.get())
+            else:
+                continue
+
+        for filename in filenames_list:
+            pdf_file = open(filename, 'rb')
+            pdf_reader = PyPDF2.PdfFileReader(pdf_file)
+
+            for page in range(pdf_reader.numPages):
+                page_obj = pdf_reader.getPage(page)
+                pdf_writer.addPage(page_obj)
+
+            pdf_writer.write(pdf_output)
+            pdf_file.close()
+
+        pdf_output.close()
+
+        pop_up('Merged files!')
+
+    except FileNotFoundError:
+        pop_up("Invalid file location!")
         return
 
-    pdfWriter.write(pdfOutput)
-    pdfOutput.close()
-    pdfFile1.close()
-    pdfFile2.close()
-    pop_up('Merged {} and {}!'.format(os.path.basename(filename1),
-                                      os.path.basename(filename2)))
 
-
-def get_pdf_file_1():
-    global entry1_stringvar
-    filename = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf"),
-                                                     ("All files", "*.*")],
-                                          title="Choose first PDF")
-    entry1_stringvar.set(filename)
-
-
-def get_pdf_file_2():
-    global entry2_stringvar
-    filename = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf"),
-                                                     ("All files", "*.*")],
-                                          title="Choose second PDF")
-    entry2_stringvar.set(filename)
-
-
-def browse_dirs():
-    global merged_stringvar
-    filename = filedialog.asksaveasfilename(filetypes=[("PDF files", "*.pdf"),
-                                                       ("All files", "*.*")],
-                                            defaultextension=".pdf",
-                                            title="Save merged PDF as...")
-    merged_stringvar.set(filename)
+def check_not_empty(list, box_content):
+    if box_content.get() != '':
+        list.add_entry(box_content.get())
 
 
 # windows and frames
-root = Tk()
+root = tk.Tk()
 root.title("PDF Merger")
 root.resizable(False, False)
 
-top_frame = Frame(root)
-topLeft_frame = Frame(top_frame)
-topLeft_entry_frame = Frame(topLeft_frame)
-topLeft_label_frame = Frame(topLeft_frame)
-topRight_frame = Frame(top_frame)
-topRight_entry_frame = Frame(topRight_frame)
-topRight_label_frame = Frame(topRight_frame)
-middle_frame = Frame(root)
-middle_label_frame = Frame(middle_frame)
-middle_entry_frame = Frame(middle_frame)
-bottom_frame = Frame(root)
+top_frame = tk.Frame(root)
+top_right_frame = tk.Frame(top_frame)
+middle_frame = tk.Frame(root)
+bottom_frame = tk.Frame(root)
 
-# Entrys with StringVars and Labels
-entry1_stringvar = StringVar()
-entry1 = Entry(topLeft_entry_frame, textvariable=entry1_stringvar, width=40)
-entry1_label = Label(topLeft_label_frame, text="Choose first PDF:")
+# Entrys
+entry = LabelledBrowseBox(top_frame, "Choose next PDF: ",
+                          "Choose next PDF...", "Browse...")
 
-entry2_stringvar = StringVar()
-entry2 = Entry(topRight_entry_frame, textvariable=entry2_stringvar,
-               width=40)
-entry2_label = Label(topRight_label_frame, text="Choose second PDF:")
+entry_list = ListOfEntries(top_right_frame)
 
-merged_stringvar = StringVar()
-mergedEntry = Entry(middle_entry_frame, textvariable=merged_stringvar,
-                    width=40)
-merged_label = Label(middle_label_frame, text="Save merged PDF as...")
+output_entry = LabelledBrowseBox(middle_frame, "Save merged PDF as: ",
+                                 "Save merged PDF as...", "Browse...",
+                                 open=False)
 
-# browse buttons
-browse_button1 = Button(topLeft_entry_frame, text="Browse...",
-                        command=lambda: get_pdf_file_1())
-browse_button2 = Button(topRight_entry_frame, text="Browse...",
-                        command=lambda: get_pdf_file_2())
-browse_button3 = Button(middle_entry_frame, text="Browse...",
-                        command=lambda: browse_dirs())
+# other buttons
+add_button = tk.Button(top_frame, text=">",
+                       command=lambda: (check_not_empty(entry_list,
+                                                        entry.name),
+                                        entry.name.set('')))
 
-# set up main Button
-merge_button = Button(bottom_frame, text="Merge!",
-                      command=lambda: pdf_merge(entry1_stringvar,
-                                                entry2_stringvar,
-                                                merged_stringvar))
+merge_button = tk.Button(bottom_frame, text="Merge!",
+                         command=lambda: pdf_merge(entry_list.entries_list,
+                                                   output_entry.name))
 
 # packing statements
 #  frames
-top_frame.pack(side=TOP, padx=3)
-topLeft_frame.pack(side=LEFT)
-topLeft_label_frame.pack(side=TOP)
-topLeft_entry_frame.pack(side=TOP)
-topRight_frame.pack(side=LEFT)
-topRight_label_frame.pack(side=TOP)
-topRight_entry_frame.pack(side=TOP)
-middle_frame.pack(side=TOP)
-middle_label_frame.pack(side=TOP)
-middle_entry_frame.pack(side=TOP)
-bottom_frame.pack(side=TOP)
+top_frame.pack(side=tk.TOP, padx=3)
+top_right_frame.pack(side=tk.RIGHT)
+middle_frame.pack(side=tk.TOP)
+bottom_frame.pack(side=tk.TOP)
 
 # widgets
-entry1_label.pack()
-entry1.pack(side=LEFT, fill=X, expand=1, padx=5)
-browse_button1.pack(side=LEFT, pady=5)
-entry2_label.pack()
-entry2.pack(side=LEFT, fill=X, expand=1, padx=5)
-browse_button2.pack(side=LEFT, pady=5)
-merged_label.pack()
-mergedEntry.pack(side=LEFT, fill=X, expand=1, padx=5)
-browse_button3.pack(side=LEFT, pady=5)
+entry.pack_in()
+output_entry.pack_in()
+add_button.pack(side=tk.LEFT, padx=5)
 merge_button.pack(pady=5)
 
 # initiate
