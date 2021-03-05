@@ -1,4 +1,4 @@
 # pdf_merger
-It merges PDFs
+GUI application to merge PDFs.
 
 Dependencies: PyPDF2
