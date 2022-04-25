@@ -1,4 +1,4 @@
-import PyPDF2
+from pikepdf import Pdf
 from tkinter import filedialog
 import tkinter as tk
 
@@ -77,39 +77,24 @@ def pop_up(msg):
 
 def pdf_merge(content_list, output_entry):
     filenames_list = []
-    pdf_writer = PyPDF2.PdfFileWriter()
 
-    try:
-        output_filename = output_entry.get()
-        pdf_output = open(output_filename, 'wb')
-    except FileNotFoundError:
-        pop_up('Invalid save location!')
+    output_filename = output_entry.get()
 
-    try:
-        for content in content_list:
-            if content.get() != '':
-                filenames_list.append(content.get())
-            else:
-                continue
+    for content in content_list:
+        if content.get() != '':
+            filenames_list.append(content.get())
+        else:
+            continue
 
-        for filename in filenames_list:
-            pdf_file = open(filename, 'rb')
-            pdf_reader = PyPDF2.PdfFileReader(pdf_file)
+    pdf = Pdf.new()
 
-            for page in range(pdf_reader.numPages):
-                page_obj = pdf_reader.getPage(page)
-                pdf_writer.addPage(page_obj)
+    for filename in filenames_list:
+        src = Pdf.open(filename)
+        pdf.pages.extend(src.pages)
 
-            pdf_writer.write(pdf_output)
-            pdf_file.close()
+    pdf.save(output_filename)
 
-        pdf_output.close()
-
-        pop_up('Merged files!')
-
-    except FileNotFoundError:
-        pop_up("Invalid file location!")
-        return
+    pop_up('Merged files!')
 
 
 def check_not_empty(list, box_content):
